@@ -14,6 +14,6 @@ int main() {
 	//thread.simpleMultiThreadStoragePerThreadWithAligned();
 	thread.simpleMultiThreadStoragePerThreadSingleBatch();
 	thread.simpleMultiThreadStoragePerThreadMultiBatch();
-	
+	thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
 	return 0;
 }

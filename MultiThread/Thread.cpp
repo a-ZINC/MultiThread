@@ -172,3 +172,38 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatch() {
 		std::cout << "Batch " << i << " sum: " << cnts[i] << "\n";
 	}
 }
+
+void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker() {
+	std::vector<std::vector<int>> dataset = generateDataset();
+	t.start();
+	std::vector<int> cnts(4, 0);
+	int64 sum = 0;
+	Master master(4);
+	std::vector<std::unique_ptr<Worker>> workers;
+	
+	workers.reserve(4);
+	for (int i = 0; i < 4; i++) {
+		workers.push_back(std::make_unique<Worker>(&master));
+	}
+
+	for (int subpart = 0; subpart < 1000; subpart++) {
+		int subset = 100000000 / 1000;
+		for (int j = 0; j < 4; j++) {
+			int* start_ptr = &dataset[j][subpart * subset];
+			std::span<int> batch_span(start_ptr, subset);
+			workers[j]->setJob(batch_span, &cnts[j]);
+		}
+		master.wait_for_all();
+		for (int s : cnts) sum += s;
+	}
+
+	for (int i = 0; i < cnts.size(); i++) {
+		workers[i]->kill();
+	}
+	workers.clear();
+	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker");
+	for (int i = 0; i < 4; i++) {
+		std::cout << "Batch " << i << " sum: " << cnts[i] << "\n";
+	}
+
+}

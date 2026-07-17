@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="MultiThread/MultiThread.vcxproj" />
+  <Project Path="MultiThread/MultiThread.vcxproj" Id="44d2891a-17c2-49b1-b0b2-5ca6e489e2ca" />
 </Solution>
