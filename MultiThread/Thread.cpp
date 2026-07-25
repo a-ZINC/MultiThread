@@ -37,6 +37,53 @@ std::vector<std::vector<int>> Thread::generateDataset() {
 	return dataset;
 }
 
+std::vector<Chunk> Thread::generateRandomDataSet() {
+	std::vector<Chunk> chunks;
+	chunks.reserve(CHUNK_COUNT);
+
+	std::mt19937 rnd(2828);
+	std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
+	std::bernoulli_distribution h_dist{ HEAVY_PROBABILITY };
+
+	for (size_t c = 0; c<chunks.size(); c++) {
+		Chunk chunk;
+		for (auto& task : chunk) {
+			task.val = v_dist(rnd);
+			task.heavy = h_dist(rnd);
+		}
+	}
+	return chunks;
+}
+
+std::vector<Chunk> Thread::generateEvenlyDataSet() {
+	std::vector<Chunk> chunks;
+	chunks.reserve(CHUNK_COUNT);
+
+	std::mt19937 rnd(2828);
+	std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
+	int nth = static_cast<int>(1.0 / HEAVY_PROBABILITY);
+	for (size_t c = 0; c < chunks.size(); c++) {
+		Chunk chunk;
+		for (auto it = 0; it<chunk.size(); it++) {
+			chunk[it].val = v_dist(rnd);
+			chunk[it].heavy = (it % nth == 0);
+		}
+	}
+	return chunks;
+}
+
+std::vector<Chunk> Thread::generateStackedDataSet() {
+	std::vector<Chunk> chunks = generateEvenlyDataSet();
+	for (auto& chunk : chunks) {
+		std::ranges::partition(chunk, [](const Task& t) {return t.heavy; });
+	}
+	return chunks;
+}
+
+
+
+
+
 
 void Thread::singleThread() {
 	t.start();

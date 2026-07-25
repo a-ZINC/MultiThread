@@ -7,18 +7,53 @@
 #include<span>
 #include"Timer.h"
 #include <condition_variable>
+#include <cmath>
+#include <numbers>
+#include <array>
 
 typedef long long int64;
+
+constexpr size_t WORKER_COUNT = 4;
+constexpr size_t CHUNK_SIZE = 1000;
+constexpr size_t CHUNK_COUNT = 100;
+constexpr size_t LIGHT_IT = 100;
+constexpr size_t HEAVY_IT = 1000;
+constexpr double HEAVY_PROBABILITY = 0.05;
+
+static_assert(CHUNK_SIZE % WORKER_COUNT == 0, "Worker should be multiple of chunk size");
+
+class Task {
+public:
+	int val;
+	bool heavy;
+
+	double process() {
+		size_t iterations = heavy ? HEAVY_IT : LIGHT_IT;
+		double intermediate = val;
+
+		for (auto i = 0; i < iterations; i++) {
+			intermediate = std::sin(std::cos(intermediate));
+		}
+		return intermediate;
+	}
+};
+
+using Chunk = std::array<Task, CHUNK_SIZE>;
 
 class Thread {
 private:
 	Timer& t;
 	std::mutex mtx;
+	
+
 public:
 	Thread(Timer& t);
 	void complexFunction(int& cnt);
 	void complexFunctionWithMutex(int& cnt);
 	std::vector<std::vector<int>> generateDataset();
+	std::vector<Chunk> generateRandomDataSet();
+	std::vector<Chunk> generateEvenlyDataSet();
+	std::vector<Chunk> generateStackedDataSet();
 	void processBatch(int& sum, std::span<int> batch);
 	void singleThread();
 	void simpleMultiThreadRaceCondition();
