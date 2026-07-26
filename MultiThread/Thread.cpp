@@ -80,11 +80,6 @@ std::vector<Chunk> Thread::generateStackedDataSet() {
 	return chunks;
 }
 
-
-
-
-
-
 void Thread::singleThread() {
 	t.start();
 	int cnt = 0;

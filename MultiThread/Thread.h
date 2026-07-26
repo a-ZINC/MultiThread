@@ -27,7 +27,7 @@ public:
 	int val;
 	bool heavy;
 
-	double process() {
+	double process() const {
 		size_t iterations = heavy ? HEAVY_IT : LIGHT_IT;
 		double intermediate = val;
 
@@ -146,4 +146,126 @@ public:
 		}
 		cv.notify_one();
 	}
+};
+
+class MasterController {
+private:
+	std::mutex mtx;
+	std::condition_variable cv;
+	int worker_count;
+	int done_count;
+public:
+	MasterController(int worker) : worker_count(worker), done_count(0) {}
+	void signalDone() {
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			done_count++;
+		}
+		if (worker_count == done_count) {
+			cv.notify_one();
+		}
+	}
+
+	void wait_for_all() {
+		std::unique_lock<std::mutex> lock(mtx);
+		cv.wait(lock, [this]() -> bool {return done_count == worker_count;});
+		done_count = 0;
+	}
+};
+
+class WorkerController {
+private:
+	std::mutex mtx;
+	std::condition_variable cv;
+	std::jthread thread;
+	bool dying;
+	std::span<const Task> input;
+	double* output;
+	MasterController* master;
+
+private:
+	void Run_() {
+		std::unique_lock<std::mutex> lock(mtx);
+		while (true) {
+			cv.wait(lock, [this]() ->  bool { return input.size() != 0 || dying; });
+			if (dying) {
+				break;
+			}
+
+			processTasks();
+			input = {};
+			this->output = nullptr;
+
+			master->signalDone();
+		}
+	}
+
+	std::vector<Chunk> generateRandomDataSet() {
+		std::vector<Chunk> chunks;
+		chunks.reserve(CHUNK_COUNT);
+
+		std::mt19937 rnd(2828);
+		std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
+		std::bernoulli_distribution h_dist{ HEAVY_PROBABILITY };
+
+		for (size_t c = 0; c < chunks.size(); c++) {
+			Chunk chunk;
+			for (auto& task : chunk) {
+				task.val = v_dist(rnd);
+				task.heavy = h_dist(rnd);
+			}
+		}
+		return chunks;
+	}
+
+	std::vector<Chunk> generateEvenlyDataSet() {
+		std::vector<Chunk> chunks;
+		chunks.reserve(CHUNK_COUNT);
+
+		std::mt19937 rnd(2828);
+		std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
+		int nth = static_cast<int>(1.0 / HEAVY_PROBABILITY);
+		for (size_t c = 0; c < chunks.size(); c++) {
+			Chunk chunk;
+			for (auto it = 0; it < chunk.size(); it++) {
+				chunk[it].val = v_dist(rnd);
+				chunk[it].heavy = (it % nth == 0);
+			}
+		}
+		return chunks;
+	}
+
+	std::vector<Chunk> generateStackedDataSet() {
+		std::vector<Chunk> chunks = generateEvenlyDataSet();
+		for (auto& chunk : chunks) {
+			std::ranges::partition(chunk, [](const Task& t) {return t.heavy; });
+		}
+		return chunks;
+	}
+
+	void processTasks() {
+		for (const auto& task : input) {
+			*output += task.process();
+		}
+	}
+
+public:
+	WorkerController(MasterController* master, Thread t) : thread(std::jthread(WorkerController::Run_, this)), dying(false), output(nullptr), master(master) {}
+	bool kill() {
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			dying = true;
+		}
+		cv.notify_one();
+	}
+
+	void setJob(std::span<Task> input, double* output) {
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			this->input = input;
+			this->output = output;
+		}
+		cv.notify_one();
+	}
+
 };
