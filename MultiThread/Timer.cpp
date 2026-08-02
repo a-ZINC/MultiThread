@@ -13,8 +13,9 @@
 	void Timer::start() {
 		subStartTime = std::chrono::high_resolution_clock::now();
 	}
-	void Timer::stop(std::string subParts) {
+	float Timer::stop(std::string subParts) {
 		subEndTime = std::chrono::high_resolution_clock::now();
 		subDuration = subEndTime - subStartTime;
 		std::cout << "[" << subParts << "]: " << subDuration.count() << " seconds\n";
+		return subDuration.count();
 	}

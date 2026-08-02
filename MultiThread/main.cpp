@@ -12,8 +12,9 @@ int main() {
 	////thread.simpleMultiThreadMutex();
 	//thread.simpleMultiThreadStoragePerThread();
 	//thread.simpleMultiThreadStoragePerThreadWithAligned();
-	thread.simpleMultiThreadStoragePerThreadSingleBatch();
-	thread.simpleMultiThreadStoragePerThreadMultiBatch();
-	thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
+	//thread.simpleMultiThreadStoragePerThreadSingleBatch();
+	//thread.simpleMultiThreadStoragePerThreadMultiBatch();
+	//thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
+	thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController('r');
 	return 0;
 }

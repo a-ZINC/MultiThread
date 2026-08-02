@@ -45,12 +45,13 @@ std::vector<Chunk> Thread::generateRandomDataSet() {
 	std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
 	std::bernoulli_distribution h_dist{ HEAVY_PROBABILITY };
 
-	for (size_t c = 0; c<chunks.size(); c++) {
+	for (size_t c = 0; c<CHUNK_COUNT; c++) {
 		Chunk chunk;
 		for (auto& task : chunk) {
 			task.val = v_dist(rnd);
 			task.heavy = h_dist(rnd);
 		}
+		chunks.push_back(chunk);
 	}
 	return chunks;
 }
@@ -62,12 +63,13 @@ std::vector<Chunk> Thread::generateEvenlyDataSet() {
 	std::mt19937 rnd(2828);
 	std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
 	int nth = static_cast<int>(1.0 / HEAVY_PROBABILITY);
-	for (size_t c = 0; c < chunks.size(); c++) {
+	for (size_t c = 0; c < CHUNK_COUNT; c++) {
 		Chunk chunk;
 		for (auto it = 0; it<chunk.size(); it++) {
 			chunk[it].val = v_dist(rnd);
 			chunk[it].heavy = (it % nth == 0);
 		}
+		chunks.push_back(chunk);
 	}
 	return chunks;
 }
@@ -248,4 +250,45 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker() {
 		std::cout << "Batch " << i << " sum: " << cnts[i] << "\n";
 	}
 
+}
+
+void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController(char s) {
+	std::vector<Chunk> chunks = (s == 'r') ? generateRandomDataSet() : (s == 'e') ? generateEvenlyDataSet() : generateStackedDataSet();
+	t.start();
+	std::vector<std::unique_ptr<WorkerController>> workers;
+	workers.reserve(4);
+	MasterController master(4);
+	std::vector<unsigned int> outputs(4, 0.0);
+	std::vector<ChunkTimingInfo> chunkTimings;
+	chunkTimings.reserve(CHUNK_COUNT);
+	for (int i = 0; i < 4; i++) {
+		workers.push_back(std::make_unique<WorkerController>(&master, t));
+	}
+
+	for (auto& chunk : chunks) {
+		t.start();
+		for (int j = 0; j < 4; j++) {
+			std::span<Task> batch(chunk.begin() + j * (CHUNK_SIZE / 4), chunk.begin() + (j + 1) * (CHUNK_SIZE / 4));
+			workers[j]->setJob(batch, &outputs[j]);
+		}
+		master.wait_for_all();
+		float chunkTime = t.stop("Chunk Processing Time");
+		ChunkTimingInfo info;
+		for (int i = 0; i < 4; i++) {
+			info.timeSpentPerWorker[i] = workers[i]->getTimeSpentPerWorker();
+			info.heavyCountPerWorker[i] = workers[i]->getHeavyCount();
+		}
+		info.totalChunkTime = chunkTime;
+		chunkTimings.push_back(info);
+	}
+	workers.clear();
+
+	unsigned int sum = 0;
+
+	for (int i = 0; i < 4; i++) {
+		sum += outputs[i];
+	}
+	std::cout << "Total sum: " << sum << "\n";
+
+	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker Controller");
 }

@@ -14,27 +14,27 @@
 typedef long long int64;
 
 constexpr size_t WORKER_COUNT = 4;
-constexpr size_t CHUNK_SIZE = 1000;
+constexpr size_t CHUNK_SIZE = 800;
 constexpr size_t CHUNK_COUNT = 100;
 constexpr size_t LIGHT_IT = 100;
 constexpr size_t HEAVY_IT = 1000;
-constexpr double HEAVY_PROBABILITY = 0.05;
+constexpr double HEAVY_PROBABILITY = 0.02;
 
 static_assert(CHUNK_SIZE % WORKER_COUNT == 0, "Worker should be multiple of chunk size");
 
 class Task {
 public:
-	int val;
+	double val;
 	bool heavy;
 
-	double process() const {
+	unsigned int process() const {
 		size_t iterations = heavy ? HEAVY_IT : LIGHT_IT;
 		double intermediate = val;
 
 		for (auto i = 0; i < iterations; i++) {
-			intermediate = std::sin(std::cos(intermediate));
+			intermediate = double(unsigned int (std::abs(std::sin(std::cos(intermediate)) * 10'000'000)) % 100'000) / 10'000;
 		}
-		return intermediate;
+		return unsigned int(std::exp(intermediate));
 	}
 };
 
@@ -63,6 +63,7 @@ public:
 	void simpleMultiThreadStoragePerThreadSingleBatch();
 	void simpleMultiThreadStoragePerThreadMultiBatch();
 	void simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
+	void simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController(char s);
 };
 
 class Master {
@@ -177,11 +178,14 @@ class WorkerController {
 private:
 	std::mutex mtx;
 	std::condition_variable cv;
-	std::jthread thread;
-	bool dying;
+	bool dying = false;
 	std::span<const Task> input;
-	double* output;
+	unsigned int* output = nullptr;
 	MasterController* master;
+	std::jthread thread;
+	size_t heavyCount;
+	float timeSpendPerWorker = -1.f;
+	Timer timer;
 
 private:
 	void Run_() {
@@ -192,7 +196,9 @@ private:
 				break;
 			}
 
+			timer.start();
 			processTasks();
+			timeSpendPerWorker = timer.stop("Worker Processing Time");
 			input = {};
 			this->output = nullptr;
 
@@ -244,14 +250,26 @@ private:
 	}
 
 	void processTasks() {
+		heavyCount = 0;
 		for (const auto& task : input) {
 			*output += task.process();
+			heavyCount += task.heavy ? 1 : 0;
 		}
 	}
 
 public:
-	WorkerController(MasterController* master, Thread t) : thread(std::jthread(WorkerController::Run_, this)), dying(false), output(nullptr), master(master) {}
-	bool kill() {
+	WorkerController(MasterController* master, Timer& timer) : master(master), thread(std::jthread(&WorkerController::Run_, this)), timer(timer) {};
+	~WorkerController() {
+		kill();
+	}
+	WorkerController(const WorkerController&) = delete;
+	WorkerController& operator=(const WorkerController&) = delete;
+
+	// 3. DEFAULT Move Constructor and Move Assignment (Allows vector reallocation)
+	WorkerController(WorkerController&&) noexcept = default;
+	WorkerController& operator=(WorkerController&&) noexcept = default;
+
+	void kill() {
 		{
 			std::lock_guard<std::mutex> lock(mtx);
 			dying = true;
@@ -259,7 +277,7 @@ public:
 		cv.notify_one();
 	}
 
-	void setJob(std::span<Task> input, double* output) {
+	void setJob(std::span<Task> input, unsigned int* output) {
 		{
 			std::lock_guard<std::mutex> lock(mtx);
 			this->input = input;
@@ -268,4 +286,18 @@ public:
 		cv.notify_one();
 	}
 
+	float getTimeSpentPerWorker() const {
+		return timeSpendPerWorker;
+	}
+
+	size_t getHeavyCount() const {
+		return heavyCount;
+	}
+
+};
+
+struct ChunkTimingInfo {
+	std::array<float, WORKER_COUNT> timeSpentPerWorker;
+	std::array<size_t, WORKER_COUNT> heavyCountPerWorker;
+	float totalChunkTime;
 };
