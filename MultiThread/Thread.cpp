@@ -290,5 +290,23 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerControll
 	}
 	std::cout << "Total sum: " << sum << "\n";
 
+	std::ofstream outFile(std::format("chunk_timings_{}.csv", s), std::ios_base::trunc);
+	for (int i = 0; i < 4; i++) {
+		outFile << std::format("time_worker_{0:},idle_time_{0:},heavy_{0:},", i);
+	}
+	outFile << "total_chunk_time,total_idle,total_heavy\n";
+
+	for (const auto& info : chunkTimings) {
+		float totalIdleTime = 0.f;
+		int totalHeavyCount = 0;
+		for (int i = 0; i < 4; i++) {
+			float idleTime = info.totalChunkTime - info.timeSpentPerWorker[i];
+			outFile << std::format("{},{},{},", info.timeSpentPerWorker[i], idleTime, info.heavyCountPerWorker[i]);
+			totalIdleTime += idleTime;
+			totalHeavyCount += info.heavyCountPerWorker[i];
+		}
+		outFile << std::format("{},{},{}\n", info.totalChunkTime, totalIdleTime, totalHeavyCount);
+	}
+
 	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker Controller");
 }

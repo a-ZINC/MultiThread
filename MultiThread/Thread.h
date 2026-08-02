@@ -10,15 +10,18 @@
 #include <cmath>
 #include <numbers>
 #include <array>
+#include <fstream>
+#include <format>
+#include <numeric>
 
 typedef long long int64;
 
 constexpr size_t WORKER_COUNT = 4;
-constexpr size_t CHUNK_SIZE = 800;
+constexpr size_t CHUNK_SIZE = 8'000;
 constexpr size_t CHUNK_COUNT = 100;
 constexpr size_t LIGHT_IT = 100;
 constexpr size_t HEAVY_IT = 1000;
-constexpr double HEAVY_PROBABILITY = 0.02;
+constexpr double HEAVY_PROBABILITY = 0.05;
 
 static_assert(CHUNK_SIZE % WORKER_COUNT == 0, "Worker should be multiple of chunk size");
 
@@ -183,7 +186,7 @@ private:
 	unsigned int* output = nullptr;
 	MasterController* master;
 	std::jthread thread;
-	size_t heavyCount;
+	size_t heavyCount = 0;
 	float timeSpendPerWorker = -1.f;
 	Timer timer;
 
