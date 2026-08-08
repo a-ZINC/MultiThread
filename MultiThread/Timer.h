@@ -17,5 +17,5 @@ public:
 	~Timer();
 
 	void start();
-	float stop(std::string subParts);
+	float stop(std::string subParts, bool flag);
 };

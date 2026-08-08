@@ -15,6 +15,11 @@ int main() {
 	//thread.simpleMultiThreadStoragePerThreadSingleBatch();
 	//thread.simpleMultiThreadStoragePerThreadMultiBatch();
 	//thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
-	thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController('s');
+	{
+		thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController('s');
+	}
+	{
+		thread.simpleMultiThreadTaskQueue();
+	}
 	return 0;
 }

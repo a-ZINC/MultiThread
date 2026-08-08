@@ -1,4 +1,5 @@
 #include"Thread.h"
+#include"TaskQueue.h"
 
 struct AlignedCount {
 	alignas(64) int cnt = 0;
@@ -82,13 +83,38 @@ std::vector<Chunk> Thread::generateStackedDataSet() {
 	return chunks;
 }
 
+std::vector<tq::Chunk> generateEvenlyDataSeti() {
+	std::vector<tq::Chunk> chunks;
+	chunks.reserve(CHUNK_COUNT);
+
+	std::mt19937 rnd(2828);
+	std::uniform_real_distribution<double> v_dist{ 0, std::numbers::pi };
+	int nth = static_cast<int>(1.0 / HEAVY_PROBABILITY);
+	for (size_t c = 0; c < CHUNK_COUNT; c++) {
+		tq::Chunk chunk;
+		for (auto it = 0; it < chunk.size(); it++) {
+			chunk[it].val = v_dist(rnd);
+			chunk[it].heavy = (it % nth == 0);
+		}
+		chunks.push_back(chunk);
+	}
+	return chunks;
+}
+std::vector<tq::Chunk> generateStackedDataSeti() {
+	std::vector<tq::Chunk> chunks = generateEvenlyDataSeti();
+	for (auto& chunk : chunks) {
+		std::ranges::partition(chunk, [](const tq::Task& t) {return t.heavy; });
+	}
+	return chunks;
+}
+
 void Thread::singleThread() {
 	t.start();
 	int cnt = 0;
 	for (int i = 0; i < 4; i++) {
 		complexFunction(cnt);
 	}
-	t.stop("Single Thread");
+	t.stop("Single Thread", true);
 	std::cout << "cnt: " << cnt << "\n";
 }
 
@@ -104,7 +130,7 @@ void Thread::simpleMultiThreadRaceCondition() {
 			th.join();
 		}
 	}
-	t.stop("Multi Thread Race Condition");
+	t.stop("Multi Thread Race Condition", true);
 	std::cout << "cnt: " << cnt << "\n";
 }
 
@@ -120,7 +146,7 @@ void Thread::simpleMultiThreadMutex() {
 			th.join();
 		}
 	}
-	t.stop("Multi Thread Mutex");
+	t.stop("Multi Thread Mutex", true);
 	std::cout << "cnt: " << cnt << "\n";
 	
 }
@@ -143,7 +169,7 @@ void Thread::simpleMultiThreadStoragePerThread() {
 	for (auto& cnt : cnts) {
 		sum += cnt;
 	}
-	t.stop("Multi Thread Storage Per Thread");
+	t.stop("Multi Thread Storage Per Thread", true);
 	std::cout << "cnt: " << sum << "\n";
 }
 void Thread::simpleMultiThreadStoragePerThreadWithAligned() {
@@ -164,7 +190,7 @@ void Thread::simpleMultiThreadStoragePerThreadWithAligned() {
 	for (auto& cnt : cnts) {
 		sum += cnt.cnt;
 	}
-	t.stop("Multi Thread Storage Per Thread With Aligned");
+	t.stop("Multi Thread Storage Per Thread With Aligned", true);
 	std::cout << "cnt: " << sum << "\n";
 }
 
@@ -187,7 +213,7 @@ void Thread::simpleMultiThreadStoragePerThreadSingleBatch() {
 		}
 	}
 
-	t.stop("Multi Thread Storage Per Thread Single Batch");
+	t.stop("Multi Thread Storage Per Thread Single Batch", true);
 	for (int i = 0; i < 4; i++) {
 		std::cout << "Batch " << i << " sum: " << cnts[i] << "\n";
 	}
@@ -210,7 +236,7 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatch() {
 		}
 	}
 
-	t.stop("Multi Thread Storage Per Thread Multi Batch");
+	t.stop("Multi Thread Storage Per Thread Multi Batch", true);
 
 	for (int i = 0; i < 4; i++) {
 		std::cout << "Batch " << i << " sum: " << cnts[i] << "\n";
@@ -245,7 +271,7 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker() {
 		workers[i]->kill();
 	}
 	workers.clear();
-	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker");
+	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker", true);
 	for (int i = 0; i < 4; i++) {
 		std::cout << "Batch " << i << " sum: " << cnts[i] << "\n";
 	}
@@ -272,7 +298,7 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerControll
 			workers[j]->setJob(batch, &outputs[j]);
 		}
 		master.wait_for_all();
-		float chunkTime = t.stop("Chunk Processing Time");
+		float chunkTime = t.stop("Chunk Processing Time", false);
 		ChunkTimingInfo info;
 		for (int i = 0; i < 4; i++) {
 			info.timeSpentPerWorker[i] = workers[i]->getTimeSpentPerWorker();
@@ -289,6 +315,7 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerControll
 		sum += outputs[i];
 	}
 	std::cout << "Total sum: " << sum << "\n";
+	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker Controller", true);
 
 	std::ofstream outFile(std::format("chunk_timings_{}.csv", s), std::ios_base::trunc);
 	for (int i = 0; i < 4; i++) {
@@ -307,6 +334,29 @@ void Thread::simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerControll
 		}
 		outFile << std::format("{},{},{}\n", info.totalChunkTime, totalIdleTime, totalHeavyCount);
 	}
+}
 
-	t.stop("Multi Thread Storage Per Thread Multi Batch With Master-Worker Controller");
+void Thread::simpleMultiThreadTaskQueue() {
+	std::vector<tq::Chunk> chunks = generateStackedDataSeti();
+	t.start();
+	tq::Master master;
+	std::vector<std::unique_ptr<tq::Worker>> workers;
+	for (int i = 0; i < WORKER_COUNT; i++) {
+		workers.push_back(std::make_unique<tq::Worker>(&master));
+	}
+
+	for (auto& chunk : chunks) {
+		master.setChunk(chunk);
+		for (auto& worker : workers) {
+			worker->startWorking();
+		}
+		master.wait_for_all();
+	}
+	unsigned int answer = 0.0;
+	for (auto& w : workers) answer += w->GetResult();
+	std::cout << "Total sum: " << answer << "\n";
+
+	for (auto& w : workers) w->Kill();
+	workers.clear();
+	t.stop("Multi Thread Task Queue", true);
 }

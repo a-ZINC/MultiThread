@@ -17,11 +17,11 @@
 typedef long long int64;
 
 constexpr size_t WORKER_COUNT = 4;
-constexpr size_t CHUNK_SIZE = 8'000;
-constexpr size_t CHUNK_COUNT = 100;
+constexpr size_t CHUNK_SIZE = 1'00;
+constexpr size_t CHUNK_COUNT = 1000;
 constexpr size_t LIGHT_IT = 100;
 constexpr size_t HEAVY_IT = 1000;
-constexpr double HEAVY_PROBABILITY = 0.05;
+constexpr double HEAVY_PROBABILITY = 0.15;
 
 static_assert(CHUNK_SIZE % WORKER_COUNT == 0, "Worker should be multiple of chunk size");
 
@@ -67,6 +67,7 @@ public:
 	void simpleMultiThreadStoragePerThreadMultiBatch();
 	void simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
 	void simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController(char s);
+	void simpleMultiThreadTaskQueue();
 };
 
 class Master {
@@ -201,7 +202,7 @@ private:
 
 			timer.start();
 			processTasks();
-			timeSpendPerWorker = timer.stop("Worker Processing Time");
+			timeSpendPerWorker = timer.stop("Worker Processing Time", false);
 			input = {};
 			this->output = nullptr;
 
