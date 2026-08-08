@@ -7,11 +7,12 @@
 #include <span>
 #include <condition_variable>
 #include <atomic>
+#include "Timer.h"
 
 namespace tq {
 	constexpr size_t WORKER_COUNT = 4;
-	constexpr size_t CHUNK_SIZE = 1'00;
-	constexpr size_t CHUNK_COUNT = 1000;
+	constexpr size_t CHUNK_SIZE = 1'000;
+	constexpr size_t CHUNK_COUNT = 100;
 	constexpr size_t LIGHT_IT = 100;
 	constexpr size_t HEAVY_IT = 1000;
 	constexpr double HEAVY_PROBABILITY = 0.15;
@@ -84,6 +85,9 @@ namespace tq {
 		std::mutex mtx;
 		std::jthread thread;
 		unsigned int accumulation;
+		int heavyProcessed = 0;
+		float timeSpentPerWorker = 0.;
+		Timer* t;
 
 	private:
 		void Run_() {
@@ -93,17 +97,21 @@ namespace tq {
 				if (dying) {
 					return;
 				}
+				t->start();
 				while (const Task* task = master->getTask()) {
 					accumulation += task->process();
+					heavyProcessed += task->heavy ? 1 : 0;
 				}
+				timeSpentPerWorker = t->stop("Worker Processing Time", false);
 
 				working = false;
 				master->setDone();
 			}
 		}
 	public:
-		Worker(Master* master) : master(master), working(false), dying(false), accumulation(0), thread(&Worker::Run_, this) {};
+		Worker(Master* master, Timer* t) : master(master), working(false), dying(false), accumulation(0), thread(&Worker::Run_, this), t(t) {};
 		void startWorking() {
+			heavyProcessed = 0;
 			{
 				std::unique_lock<std::mutex> lock(mtx);
 				working = true;
@@ -118,6 +126,9 @@ namespace tq {
 			}
 			cv.notify_one();
 		}
+
+		int getHeavyCount() const { return heavyProcessed; }
+		float getTimeSpentPerWorker() const { return timeSpentPerWorker; }
 
 		double GetResult() const { return accumulation; }
 	};

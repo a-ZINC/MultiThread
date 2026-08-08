@@ -17,8 +17,8 @@
 typedef long long int64;
 
 constexpr size_t WORKER_COUNT = 4;
-constexpr size_t CHUNK_SIZE = 1'00;
-constexpr size_t CHUNK_COUNT = 1000;
+constexpr size_t CHUNK_SIZE = 1'000;
+constexpr size_t CHUNK_COUNT = 100;
 constexpr size_t LIGHT_IT = 100;
 constexpr size_t HEAVY_IT = 1000;
 constexpr double HEAVY_PROBABILITY = 0.15;

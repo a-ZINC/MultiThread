@@ -341,16 +341,28 @@ void Thread::simpleMultiThreadTaskQueue() {
 	t.start();
 	tq::Master master;
 	std::vector<std::unique_ptr<tq::Worker>> workers;
+	std::vector<ChunkTimingInfo> chunkTimings;
+	chunkTimings.reserve(CHUNK_COUNT);
 	for (int i = 0; i < WORKER_COUNT; i++) {
-		workers.push_back(std::make_unique<tq::Worker>(&master));
+		workers.push_back(std::make_unique<tq::Worker>(&master, &t));
 	}
 
 	for (auto& chunk : chunks) {
+		t.start();
 		master.setChunk(chunk);
 		for (auto& worker : workers) {
 			worker->startWorking();
 		}
 		master.wait_for_all();
+		float totalTime = t.stop("Chunk Processing Time", false);
+
+		ChunkTimingInfo cTiming;
+		for (int i = 0; i < WORKER_COUNT; i++) {
+			cTiming.timeSpentPerWorker[i] = workers[i]->getTimeSpentPerWorker();
+			cTiming.heavyCountPerWorker[i] = workers[i]->getHeavyCount();
+		}
+		cTiming.totalChunkTime = totalTime;
+		chunkTimings.push_back(cTiming);
 	}
 	unsigned int answer = 0.0;
 	for (auto& w : workers) answer += w->GetResult();
@@ -359,4 +371,22 @@ void Thread::simpleMultiThreadTaskQueue() {
 	for (auto& w : workers) w->Kill();
 	workers.clear();
 	t.stop("Multi Thread Task Queue", true);
+
+	std::ofstream outFile("chunk_timings_task_queue.csv", std::ios_base::trunc);
+	for (int i = 0; i < 4; i++) {
+		outFile << std::format("time_worker_{0:},idle_time_{0:},heavy_{0:},", i);
+	}
+	outFile << "total_chunk_time,total_idle,total_heavy\n";
+
+	for (auto& info : chunkTimings) {
+		float totalIdleTime = 0.f;
+		int totalHeavyCount = 0;
+		for (int i = 0; i < 4; i++) {
+			float idleTime = info.totalChunkTime - info.timeSpentPerWorker[i];
+			outFile << std::format("{},{},{},", info.timeSpentPerWorker[i], idleTime, info.heavyCountPerWorker[i]);
+			totalIdleTime += idleTime;
+			totalHeavyCount += info.heavyCountPerWorker[i];
+		}
+		outFile << std::format("{},{},{}\n", info.totalChunkTime, totalIdleTime, totalHeavyCount);
+	}
 }
