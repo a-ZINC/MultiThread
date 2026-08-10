@@ -60,4 +60,37 @@ namespace prac {
 			std::cout << "Speedup: " << sec1 / sec2 << "x\n";
 		}
 	};
+
+	class CompilerHazard {
+		struct nonAtomic {
+			bool ready = false;
+		};
+		struct atomic {
+			std::atomic<bool> ready{ false };
+		};
+
+		template<typename T>
+		void runTest(const char* label) {
+			T data;
+			std::thread t1([&data]() {
+				std::this_thread::sleep_for(std::chrono::milliseconds(7000));
+				data.ready = true;
+			});
+			while (!data.ready) {
+
+			}
+
+			std::cout << label << " - Finished waiting for ready flag.\n";
+
+			t1.join();
+		}
+	public:
+		void run() {
+			std::thread t1(&CompilerHazard::runTest<nonAtomic>, this, "nonAtomic");
+			std::thread t2(&CompilerHazard::runTest<atomic>, this, "atomic");
+
+			t1.join();
+			t2.join();
+		}
+	};
 }

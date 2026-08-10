@@ -1,13 +1,13 @@
 #include<iostream>
-#include"Timer.h"
-#include"Thread.h"
+//#include"Timer.h"
+//#include"Thread.h"
 #include "Prac.h"
-
-Timer t;
+//
+//Timer t;
 
 int main() {
 	std::cout << "Hello, World!" << std::endl;
-	Thread thread(t);
+	//Thread thread(t);
 	//thread.singleThread();
 	//thread.simpleMultiThreadRaceCondition();
 	////thread.simpleMultiThreadMutex();
@@ -23,7 +23,10 @@ int main() {
 	//	thread.simpleMultiThreadTaskQueue();
 	//}
 
-	prac::FalseSharing fs;
-	fs.run(t);
+	//prac::FalseSharing fs;
+	//fs.run(t);
+
+	prac::CompilerHazard ch;
+	ch.run();
 	return 0;
 }
