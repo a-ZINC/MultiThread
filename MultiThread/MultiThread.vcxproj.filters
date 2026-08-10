@@ -35,5 +35,8 @@
     <ClInclude Include="TaskQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Prac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

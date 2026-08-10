@@ -1,6 +1,7 @@
 #include<iostream>
 #include"Timer.h"
 #include"Thread.h"
+#include "Prac.h"
 
 Timer t;
 
@@ -15,11 +16,14 @@ int main() {
 	//thread.simpleMultiThreadStoragePerThreadSingleBatch();
 	//thread.simpleMultiThreadStoragePerThreadMultiBatch();
 	//thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
-	{
-		thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController('s');
-	}
-	{
-		thread.simpleMultiThreadTaskQueue();
-	}
+	//{
+	//	thread.simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController('s');
+	//}
+	//{
+	//	thread.simpleMultiThreadTaskQueue();
+	//}
+
+	prac::FalseSharing fs;
+	fs.run(t);
 	return 0;
 }
