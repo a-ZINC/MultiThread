@@ -5,10 +5,13 @@
 #include <functional>
 #include <thread>
 #include"Timer.h"
+#include <vector>
+#include <mutex>
 
 
 namespace prac {
 	constexpr uint64_t kIters = 200'000'000ULL;
+	constexpr size_t kSize = 200'000'000;
 	struct SharedLine {
 		alignas(8) std::atomic<uint64_t> a{ 0 };
 		alignas(8) std::atomic<uint64_t> b{ 0 };
@@ -112,6 +115,126 @@ namespace prac {
 			std::cout << "Is ThreeLong lock-free? " << atomicThreeLong.is_lock_free() << ", always: " << std::atomic<ThreeLong>::is_always_lock_free << ", size: " << sizeof(ThreeLong) << "\n";
 			std::cout << "Is bool lock-free? " << flag.is_lock_free() << ", always: " << std::atomic<bool>::is_always_lock_free << ", size: " << sizeof(bool) << "\n";
 			std::cout << "Is int lock-free? " << atomicInt.is_lock_free() << ", always: " << std::atomic<int>::is_always_lock_free << ", size: " << sizeof(int) << "\n";
+		}
+
+	};
+
+	class Sum {
+	private:
+		std::vector<int> x;
+		size_t chunk = kSize / 4;
+		std::atomic<long long> naiveSum{ 0 };
+		std::mutex mtx;
+		long long sum = 0;
+		std::atomic<long long> atomicSum{ 0 };
+		long long naiveMutexSum = 0;
+		Timer t;
+
+	private:
+		double naiveSum_() {
+			t.start();
+			std::function<void(size_t start, size_t end)> worker = [this](size_t start, size_t end) {
+				for (size_t i = start; i < end; ++i) {
+					naiveSum.fetch_add(x[i], std::memory_order_relaxed);
+				}
+				};
+			std::vector<std::thread> threads;
+			threads.reserve(4);
+			for (size_t i = 0; i < 4; ++i) {
+				size_t start = i * chunk;
+				size_t end = (i + 1) * chunk;
+				threads.push_back(std::thread(worker, start, end));
+			}
+			for (int i = 0; i < 4; i++) {
+				threads[i].join();
+			}
+			return t.stop("Naive Sum", false);
+		}
+
+		double naiveMutex_() {
+			t.start();
+			std::function<void(size_t start, size_t end)> worker = [this](size_t start, size_t end) {
+				for (size_t i = start; i < end; ++i) {
+					std::lock_guard<std::mutex> lock(mtx);
+					naiveMutexSum += x[i];
+				}
+				};
+			std::vector<std::thread> threads;
+			threads.reserve(4);
+			for (size_t i = 0; i < 4; ++i) {
+				size_t start = i * chunk;
+				size_t end = (i + 1) * chunk;
+				threads.push_back(std::thread(worker, start, end));
+			}
+
+			for (int i = 0; i < 4; i++) {
+				threads[i].join();
+			}
+			return t.stop("Naive mutex sum", false);
+		}
+
+		double mutexSum() {
+			t.start();
+			std::function<void(size_t start, size_t end)> worker = [this](size_t start, size_t end) {
+				long long localSum = 0;
+				for (size_t i = start; i < end; ++i) {
+					localSum += x[i];
+				}
+				std::lock_guard<std::mutex> lock(mtx);
+				sum += localSum;
+				};
+			std::vector<std::thread> threads;
+			threads.reserve(4);
+			for (size_t i = 0; i < 4; ++i) {
+				size_t start = i * chunk;
+				size_t end = (i + 1) * chunk;
+				threads.push_back(std::thread(worker, start, end));
+			}
+			for (int i = 0; i < 4; i++) {
+				threads[i].join();
+			}
+			return t.stop("Mutex sum", false);
+		}
+
+		double atomicSum_() {
+			t.start();
+			std::function<void(size_t start, size_t end)> worker = [this](size_t start, size_t end) {
+				long long localSum = 0;
+				for (size_t i = start; i < end; ++i) {
+					localSum += x[i];
+				}
+				atomicSum.fetch_add(localSum, std::memory_order_relaxed);
+				};
+			std::vector<std::thread> threads;
+			threads.reserve(4);
+			for (size_t i = 0; i < 4; ++i) {
+				size_t start = i * chunk;
+				size_t end = (i + 1) * chunk;
+				threads.push_back(std::thread(worker, start, end));
+			}
+			for (int i = 0; i < 4; i++) {
+				threads[i].join();
+			}
+			return t.stop("Atomic sum", false);
+		}
+
+
+
+	public:
+		Sum(Timer& t) : x(kSize, 1), t(t) {}
+		void run() {
+			double naiveTime = naiveSum_();
+			double naiveMutex = naiveMutex_();
+			double mutexTime = mutexSum();
+			double atomicTime = atomicSum_();
+
+			std::cout <<"Naive sum: " << naiveSum <<  ", time: " << naiveTime << " s\n";
+			std::cout << "Naive Mutex sum: " << naiveMutexSum << ", time: " << naiveMutex << " s\n";
+			std::cout << "Mutex sum: " << sum << ", time: " << mutexTime << " s\n";
+			std::cout << "Atomic sum: " << atomicSum << ", time: " << atomicTime << " s\n";
+
+			std::cout << "Speedup (Naive Mutex/Atomic): " <<  naiveMutex / naiveTime << "x\n";
+			std::cout << "Speedup (Mutex/Atomic): " << mutexTime/ atomicTime << "x\n";
 		}
 
 	};

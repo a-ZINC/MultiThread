@@ -1,9 +1,9 @@
 #include<iostream>
-//#include"Timer.h"
+#include"Timer.h"
 //#include"Thread.h"
 #include "Prac.h"
-//
-//Timer t;
+
+Timer t;
 
 int main() {
 	std::cout << "Hello, World!" << std::endl;
@@ -29,7 +29,10 @@ int main() {
 	//prac::CompilerHazard ch;
 	//ch.run();
 
-	prac::LockFreeCheck lf;
-	lf.run();
+	//prac::LockFreeCheck lf;
+	//lf.run();
+
+	prac::Sum si(t);
+	si.run();
 	return 0;
 }
