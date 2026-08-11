@@ -93,4 +93,26 @@ namespace prac {
 			t2.join();
 		}
 	};
+
+	class LockFreeCheck {
+		struct OneLong { int a; alignas(8) char b;  };
+		struct TwoLong { long long a; long long b; };
+		struct ThreeLong { long long a; long long b; long long c; };
+
+	public:
+		void run() {
+			std::atomic<OneLong> atomicOneLong;
+			std::atomic<TwoLong> atomicTwoLong;
+			std::atomic<ThreeLong> atomicThreeLong;
+			std::atomic<bool> flag;
+			std::atomic<int> atomicInt;
+
+			std::cout << "Is OneLong lock-free? " << atomicOneLong.is_lock_free() << ", always: " << std::atomic<OneLong>::is_always_lock_free << ", size: " << sizeof(OneLong) << "\n";
+			std::cout << "Is TwoLong lock-free? " << atomicTwoLong.is_lock_free() << ", always: " << std::atomic<TwoLong>::is_always_lock_free << ", size: " << sizeof(TwoLong) << "\n";
+			std::cout << "Is ThreeLong lock-free? " << atomicThreeLong.is_lock_free() << ", always: " << std::atomic<ThreeLong>::is_always_lock_free << ", size: " << sizeof(ThreeLong) << "\n";
+			std::cout << "Is bool lock-free? " << flag.is_lock_free() << ", always: " << std::atomic<bool>::is_always_lock_free << ", size: " << sizeof(bool) << "\n";
+			std::cout << "Is int lock-free? " << atomicInt.is_lock_free() << ", always: " << std::atomic<int>::is_always_lock_free << ", size: " << sizeof(int) << "\n";
+		}
+
+	};
 }

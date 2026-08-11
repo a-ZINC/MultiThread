@@ -26,7 +26,10 @@ int main() {
 	//prac::FalseSharing fs;
 	//fs.run(t);
 
-	prac::CompilerHazard ch;
-	ch.run();
+	//prac::CompilerHazard ch;
+	//ch.run();
+
+	prac::LockFreeCheck lf;
+	lf.run();
 	return 0;
 }
