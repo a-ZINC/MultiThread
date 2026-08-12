@@ -32,7 +32,10 @@ int main() {
 	//prac::LockFreeCheck lf;
 	//lf.run();
 
-	prac::Sum si(t);
-	si.run();
+	//prac::Sum si(t);
+	//si.run();
+	
+	prac::LockFreeStackTest lst;
+	lst.run();
 	return 0;
 }

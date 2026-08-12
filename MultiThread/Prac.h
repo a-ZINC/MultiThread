@@ -238,4 +238,84 @@ namespace prac {
 		}
 
 	};
+
+	struct node {
+		int val;
+		node* next;
+	};
+
+	class LockFreeStack {
+	private:
+		std::atomic<node*> head{ nullptr };
+	public:
+		node* pop() {
+			node* old = head.load();
+			while (old && !head.compare_exchange_weak(old, old->next, std::memory_order_release, std::memory_order_relaxed)) {}
+			return old;
+		}
+
+		void push(node* n) {
+			node* old = head.load();
+			do {
+				n->next = old;
+			} while (!head.compare_exchange_weak(old, n, std::memory_order_release, std::memory_order_relaxed));
+		}
+	};
+
+	class LockFreeStackTest {
+	private:
+		int kworker = 4;
+		int kitr = 500'000;
+	public:
+		void run() {
+			LockFreeStack st;
+			std::atomic<long long> sum{ 0 };
+			std::atomic<long long> count{ 0 };
+
+			std::function<void()> workerPush = [this, &st]() {
+				for (int i = 0; i < kitr; i++) {
+					st.push(new node{ i, nullptr });
+				}
+			};
+
+			std::function<void()> workerPop = [this, &st, &count, &sum]() {
+				while(node* value = st.pop()){
+					count.fetch_add(1, std::memory_order_relaxed);
+					sum.fetch_add(value->val, std::memory_order_relaxed);
+					delete value;
+				}
+			};
+			{
+
+				std::vector<std::thread> threads;
+				threads.reserve(4);
+				for (int i = 0; i < kworker; i++) {
+					threads.emplace_back(workerPush);
+				}
+
+				for (int i = 0; i < kworker; i++) {
+					threads[i].join();
+				}
+			}
+
+			{
+
+				std::vector<std::thread> threads;
+				threads.reserve(4);
+				for (int i = 0; i < kworker; i++) {
+					threads.emplace_back(workerPop);
+				}
+
+				for (int i = 0; i < kworker; i++) {
+					threads[i].join();
+				}
+			}
+
+			long long expectedCount = (long long)kitr * kworker;
+			long long expectedSum = ((long long)kitr * (kitr - 1) / 2) * kworker;
+
+			std::cout << "Expected count: " << expectedCount << " ,Observed count: " << count.load() << std::endl;
+			std::cout << "Expected sum: " << expectedSum << " ,Observed sum: " << sum.load() << std::endl;
+		}
+	};
 }
