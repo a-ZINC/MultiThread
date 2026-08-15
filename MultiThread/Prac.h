@@ -331,11 +331,11 @@ namespace prac {
 			for (int i = 0; i < 4; i++) {
 				p.val[i] = (i + 1) * 10;
 			}
-			ready.store(true, std::memory_order_relaxed);
+			ready.store(true, std::memory_order_release);
 		}
 
 		void consume() {
-			while (!ready.load(std::memory_order_relaxed)) {};
+			while (!ready.load(std::memory_order_acquire)) {};
 			for (int i = 0; i < 4; i++) {
 				std::cout << "i: " << i << ", val: " << p.val[i] << " | ";
 			}
