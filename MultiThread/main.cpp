@@ -35,7 +35,10 @@ int main() {
 	//prac::Sum si(t);
 	//si.run();
 	
-	prac::LockFreeStackTest lst;
-	lst.run();
+	//prac::LockFreeStackTest lst;
+	//lst.run();
+
+	prac::Handoff hf;
+	hf.run();
 	return 0;
 }

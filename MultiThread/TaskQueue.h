@@ -8,6 +8,8 @@
 #include <condition_variable>
 #include <atomic>
 #include "Timer.h"
+#include <algorithm>
+#include <ranges>
 
 namespace tq {
 	constexpr size_t WORKER_COUNT = 4;
@@ -28,9 +30,9 @@ namespace tq {
 			double intermediate = val;
 
 			for (auto i = 0; i < iterations; i++) {
-				intermediate = double(unsigned int(std::abs(std::sin(std::cos(intermediate)) * 10'000'000)) % 100'000) / 10'000;
+				intermediate = static_cast<double>(static_cast<unsigned int>(std::abs(std::sin(std::cos(intermediate)) * 10'000'000)) % 100'000) / 10'000;
 			}
-			return unsigned int(std::exp(intermediate));
+			return static_cast<unsigned int>(std::exp(intermediate));
 		}
 	};
 
@@ -62,7 +64,7 @@ namespace tq {
 			if (notify) cv.notify_one();
 		}
 
-		__declspec(noinline) const Task* getTask() {
+		const Task* getTask() {
 			int currentIdx = idx++;
 			if (currentIdx >= CHUNK_SIZE) return nullptr;
 			return &chunk[currentIdx];

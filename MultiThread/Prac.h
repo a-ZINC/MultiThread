@@ -318,4 +318,36 @@ namespace prac {
 			std::cout << "Expected sum: " << expectedSum << " ,Observed sum: " << sum.load() << std::endl;
 		}
 	};
+
+	struct payload {
+		int val[4];
+	};
+
+	class Handoff {
+	private:
+		std::atomic<bool> ready{ 0 };
+		payload p;
+		void produce() {
+			for (int i = 0; i < 4; i++) {
+				p.val[i] = (i + 1) * 10;
+			}
+			ready.store(true, std::memory_order_relaxed);
+		}
+
+		void consume() {
+			while (!ready.load(std::memory_order_relaxed)) {};
+			for (int i = 0; i < 4; i++) {
+				std::cout << "i: " << i << ", val: " << p.val[i] << " | ";
+			}
+			std::cout << std::endl;
+		}
+	public:
+		void run() {
+			std::thread p(&Handoff::produce, this);
+			std::thread c(&Handoff::consume, this);
+			p.join();
+			c.join();
+		}
+
+	};
 }

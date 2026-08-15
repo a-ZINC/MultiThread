@@ -13,6 +13,8 @@
 #include <fstream>
 #include <format>
 #include <numeric>
+#include <algorithm>
+#include <ranges>
 
 typedef long long int64;
 
@@ -35,9 +37,9 @@ public:
 		double intermediate = val;
 
 		for (auto i = 0; i < iterations; i++) {
-			intermediate = double(unsigned int (std::abs(std::sin(std::cos(intermediate)) * 10'000'000)) % 100'000) / 10'000;
+			intermediate = static_cast<double>(static_cast<unsigned int>(std::abs(std::sin(std::cos(intermediate)) * 10'000'000)) % 100'000) / 10'000;
 		}
-		return unsigned int(std::exp(intermediate));
+		return static_cast<unsigned int>(std::exp(intermediate));
 	}
 };
 
