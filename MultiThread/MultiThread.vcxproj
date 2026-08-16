@@ -145,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Prac.h" />
+    <ClInclude Include="TaskPool.h" />
     <ClInclude Include="TaskQueue.h" />
     <ClInclude Include="Thread.h" />
     <ClInclude Include="Timer.h" />

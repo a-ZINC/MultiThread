@@ -350,4 +350,47 @@ namespace prac {
 		}
 
 	};
+
+	class SEQ_CST_Drawback {
+	private:
+		std::atomic<int> cnt;
+		Timer t;
+		int st;
+		std::mutex mtx;
+	public:
+		SEQ_CST_Drawback(Timer& t) : cnt{ 0 }, t(t) {};
+		void run() {
+			t.start();
+			for (long long i = 0; i < kIters; i++) {
+				cnt.store((int)i, std::memory_order_relaxed);
+			}
+			double relaxedTimer = t.stop("relaxed", false);
+
+
+			t.start();
+			for (long long i = 0; i < kIters; i++) {
+				cnt.store((int)i, std::memory_order_release);
+			}
+			double releasedTimer = t.stop("released", false);
+
+			t.start();
+			for (long long i = 0; i < kIters; i++) {
+				cnt.store((int)i, std::memory_order_seq_cst);
+			}
+			double seqTimer = t.stop("seq_cst", false);
+
+			t.start();
+			for (long long i = 0; i < kIters; i++) {
+				std::lock_guard<std::mutex> lock(mtx);
+				st = i;
+			}
+			double mutTimer = t.stop("mutex", false);
+
+
+			std::cout << "relax -> total time: " << relaxedTimer << "s, per store time(nsec): " << relaxedTimer / kIters * 1e9 << std::endl;
+			std::cout << "release -> total time: " << releasedTimer << "s, per store time(nsec): " << releasedTimer / kIters * 1e9 << std::endl;
+			std::cout << "seq -> total time: " << seqTimer << "s, per store time(nsec): " << seqTimer / kIters * 1e9 << std::endl;
+			std::cout << "mutex -> total time: " << mutTimer << "s, per store time(nsec): " << mutTimer / kIters * 1e9 << std::endl;
+		}
+	};
 }

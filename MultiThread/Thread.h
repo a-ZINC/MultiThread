@@ -70,6 +70,7 @@ public:
 	void simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorker();
 	void simpleMultiThreadStoragePerThreadMultiBatchWithMasterWorkerController(char s);
 	void simpleMultiThreadTaskQueue();
+	void simpleMultiThreadTaskPool();
 };
 
 class Master {

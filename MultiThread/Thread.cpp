@@ -1,5 +1,7 @@
 #include"Thread.h"
 #include"TaskQueue.h"
+#include"TaskPool.h"
+
 
 struct AlignedCount {
 	alignas(64) int cnt = 0;
@@ -388,5 +390,16 @@ void Thread::simpleMultiThreadTaskQueue() {
 			totalHeavyCount += info.heavyCountPerWorker[i];
 		}
 		outFile << std::format("{},{},{}\n", info.totalChunkTime, totalIdleTime, totalHeavyCount);
-	}
+	};
+}
+
+void Thread::simpleMultiThreadTaskPool() {
+	Task_ t1 = [] {std::cout << "one" << std::endl;};
+	Task_ t2 = [] {std::cout << "two" << std::endl;};
+
+	TaskPool tp;
+	tp.Run(t1);
+	tp.Run(t2);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(160));
 }

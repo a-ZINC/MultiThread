@@ -1,13 +1,13 @@
 #include<iostream>
 #include"Timer.h"
-//#include"Thread.h"
+#include"Thread.h"
 #include "Prac.h"
 
 Timer t;
 
 int main() {
 	std::cout << "Hello, World!" << std::endl;
-	//Thread thread(t);
+	Thread thread(t);
 	//thread.singleThread();
 	//thread.simpleMultiThreadRaceCondition();
 	////thread.simpleMultiThreadMutex();
@@ -38,7 +38,13 @@ int main() {
 	//prac::LockFreeStackTest lst;
 	//lst.run();
 
-	prac::Handoff hf;
-	hf.run();
+	//prac::Handoff hf;
+	//hf.run();
+
+	//prac::SEQ_CST_Drawback s(t);
+	//s.run();
+
+	thread.simpleMultiThreadTaskPool();
+
 	return 0;
 }
