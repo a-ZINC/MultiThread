@@ -7,12 +7,12 @@
 #include <mutex>
 #include <condition_variable>
 #include<algorithm>
-
+#include <format>
 using Task_ = std::function<void()>;
 
 class TaskPool {
 public:
-	void Run(Task_& task) {
+	void Run(Task_ task) {
 		std::lock_guard<std::mutex> lock(mtx);
 		if (auto i = std::ranges::find(workers, false, &Worker::isBusy); i != workers.end()) {
 			(*i)->setTask(task);
@@ -36,12 +36,12 @@ private:
 				cv.wait(lock, st, [this]() {return busy_.load(std::memory_order_acquire);});
 				if (st.stop_requested()) return;
 
-				//if (input != nullptr) {
+				if (input != nullptr) {
 					input();
-				//}
-				//else {
-				//	std::cout << "Function: err" << std::endl;
-				//}
+				}
+				else {
+					std::cout << "Function: err" << std::endl;
+				}
 				input = {};
 				busy_ = false;
 			}
@@ -51,7 +51,7 @@ private:
 		bool isBusy() {
 			return busy_.load(std::memory_order_acquire);
 		}
-		void setTask(Task_& task) {
+		void setTask(Task_ task) {
 			input = std::move(task);
 			busy_.store(true, std::memory_order_release);
 			cv.notify_one();

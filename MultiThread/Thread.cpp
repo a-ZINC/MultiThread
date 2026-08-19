@@ -394,12 +394,25 @@ void Thread::simpleMultiThreadTaskQueue() {
 }
 
 void Thread::simpleMultiThreadTaskPool() {
-	Task_ t1 = [] {std::cout << "one" << std::endl;};
-	Task_ t2 = [] {std::cout << "two" << std::endl;};
+	Task_ t1 = [] {
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		std::ostringstream ss;
+		ss << std::this_thread::get_id();
+		std::cout << std::format("<< {} >>", ss.str());
+	};
 
 	TaskPool tp;
 	tp.Run(t1);
-	tp.Run(t2);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	std::this_thread::sleep_for(std::chrono::milliseconds(600));
+	std::cout << std::endl;
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(160));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(160));
 }

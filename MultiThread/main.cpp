@@ -10,7 +10,7 @@ int main() {
 	Thread thread(t);
 	//thread.singleThread();
 	//thread.simpleMultiThreadRaceCondition();
-	////thread.simpleMultiThreadMutex();
+	//thread.simpleMultiThreadMutex();
 	//thread.simpleMultiThreadStoragePerThread();
 	//thread.simpleMultiThreadStoragePerThreadWithAligned();
 	//thread.simpleMultiThreadStoragePerThreadSingleBatch();
