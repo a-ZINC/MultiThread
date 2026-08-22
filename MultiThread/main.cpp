@@ -44,7 +44,8 @@ int main() {
 	//prac::SEQ_CST_Drawback s(t);
 	//s.run();
 
-	thread.simpleMultiThreadTaskPool();
+	//thread.simpleMultiThreadTaskPool();
 
+	thread.simpleMultiThreadQueueTaskPool();
 	return 0;
 }

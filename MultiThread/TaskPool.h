@@ -8,6 +8,8 @@
 #include <condition_variable>
 #include<algorithm>
 #include <format>
+#include <deque>
+
 using Task_ = std::function<void()>;
 
 class TaskPool {
@@ -67,4 +69,72 @@ private:
 private:
 	std::vector<std::unique_ptr<Worker>> workers;
 	std::mutex mtx;
+};
+
+class QueueTaskPool {
+public:
+	QueueTaskPool(int min, int max) : minWorker(min), maxWorker(max), activeTask(0) {
+		workers_.reserve(minWorker);
+		for (int i = 0; i < minWorker; i++) {
+			workers_.push_back(std::make_unique<Worker>(this));
+		}
+	}
+
+	void Run(Task_ task) {
+		{
+			std::lock_guard<std::mutex> lock(mtx_);
+			tasks_.push_back(task);
+		}
+		queueCv_.notify_one();
+	}
+
+	Task_ getTask(std::stop_token st) {
+		Task_ task;
+		std::unique_lock<std::mutex> lock(mtx_);
+		queueCv_.wait(lock, st, [this] { return !tasks_.empty();});
+		if (!st.stop_requested()) {
+			task = std::move(tasks_.front());
+			tasks_.pop_front();
+			activeTask++;
+		}
+		return task;
+	}
+
+	void waitTP() {
+		std::unique_lock<std::mutex> lock(mtx_);
+		allDoneCv_.wait(lock, [this] {return tasks_.empty() && activeTask == 0;});
+	}
+
+private:
+	class Worker {
+	private:
+		void RunCore(std::stop_token st) {
+			while (Task_ task = tp->getTask(st)) {
+				task();
+
+				{
+					std::lock_guard<std::mutex> lock(tp->mtx_);
+					tp->activeTask--;
+					if (tp->tasks_.empty() && tp->activeTask == 0) {
+						tp->allDoneCv_.notify_all();
+					}
+				}
+			}
+		}
+	public:
+		Worker(QueueTaskPool* tp) : tp(tp), thread([this](std::stop_token st) { RunCore(st); }) {}
+	private:
+		QueueTaskPool* tp;
+		std::jthread thread;
+	};
+
+private:
+	int minWorker;
+	int maxWorker;
+	int activeTask;
+	std::mutex mtx_;
+	std::condition_variable_any queueCv_;
+	std::condition_variable allDoneCv_;
+	std::deque<Task_> tasks_;
+	std::vector<std::unique_ptr<Worker>> workers_;
 };

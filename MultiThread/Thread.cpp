@@ -416,3 +416,24 @@ void Thread::simpleMultiThreadTaskPool() {
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(160));
 }
+
+void Thread::simpleMultiThreadQueueTaskPool() {
+	Task_ t1 = [] {
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::ostringstream ss;
+		ss << std::this_thread::get_id();
+		std::cout << std::format("<< {} >>\n", ss.str());
+		};
+
+	QueueTaskPool tp(4, 10);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+	tp.Run(t1);
+
+	tp.waitTP();
+}
