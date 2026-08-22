@@ -73,7 +73,7 @@ private:
 
 class QueueTaskPool {
 public:
-	QueueTaskPool(int min, int max) : minWorker(min), maxWorker(max), activeTask(0) {
+	QueueTaskPool(int min, int max) : minWorker(min), maxWorker(max) {
 		workers_.reserve(minWorker);
 		for (int i = 0; i < minWorker; i++) {
 			workers_.push_back(std::make_unique<Worker>(this));
@@ -84,6 +84,9 @@ public:
 		{
 			std::lock_guard<std::mutex> lock(mtx_);
 			tasks_.push_back(task);
+			if (tasks_.size() > workers_.size() && workers_.size() < maxWorker) {
+				workers_.push_back(std::make_unique<Worker>(this));
+			}
 		}
 		queueCv_.notify_one();
 	}
@@ -95,14 +98,17 @@ public:
 		if (!st.stop_requested()) {
 			task = std::move(tasks_.front());
 			tasks_.pop_front();
-			activeTask++;
 		}
 		return task;
 	}
 
 	void waitTP() {
 		std::unique_lock<std::mutex> lock(mtx_);
-		allDoneCv_.wait(lock, [this] {return tasks_.empty() && activeTask == 0;});
+		allDoneCv_.wait(lock, [this] {return tasks_.empty() && !anyBusy();});
+	}
+
+	bool anyBusy() {
+		return std::ranges::any_of(workers_, [](const auto& w) {return w->isBusy();});
 	}
 
 private:
@@ -110,12 +116,13 @@ private:
 	private:
 		void RunCore(std::stop_token st) {
 			while (Task_ task = tp->getTask(st)) {
+				busy.store(true, std::memory_order_release);
 				task();
+				busy.store(false, std::memory_order_release);
 
 				{
 					std::lock_guard<std::mutex> lock(tp->mtx_);
-					tp->activeTask--;
-					if (tp->tasks_.empty() && tp->activeTask == 0) {
+					if (!tp->anyBusy() && tp->tasks_.empty()) {
 						tp->allDoneCv_.notify_all();
 					}
 				}
@@ -123,7 +130,12 @@ private:
 		}
 	public:
 		Worker(QueueTaskPool* tp) : tp(tp), thread([this](std::stop_token st) { RunCore(st); }) {}
+
+		bool isBusy() {
+			return busy.load(std::memory_order_acquire);
+		}
 	private:
+		std::atomic<bool> busy;
 		QueueTaskPool* tp;
 		std::jthread thread;
 	};
@@ -131,7 +143,6 @@ private:
 private:
 	int minWorker;
 	int maxWorker;
-	int activeTask;
 	std::mutex mtx_;
 	std::condition_variable_any queueCv_;
 	std::condition_variable allDoneCv_;

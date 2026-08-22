@@ -425,13 +425,16 @@ void Thread::simpleMultiThreadQueueTaskPool() {
 		std::cout << std::format("<< {} >>\n", ss.str());
 		};
 
-	QueueTaskPool tp(4, 10);
+	QueueTaskPool tp(2, 4);
 	tp.Run(t1);
 	tp.Run(t1);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	tp.Run(t1);
 	tp.Run(t1);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	tp.Run(t1);
 	tp.Run(t1);
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	tp.Run(t1);
 	tp.Run(t1);
 
