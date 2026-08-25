@@ -9,6 +9,9 @@
 #include<algorithm>
 #include <format>
 #include <deque>
+#include <optional>
+#include <semaphore>
+#include <cassert>
 
 using Task_ = std::function<void()>;
 
@@ -149,3 +152,64 @@ private:
 	std::deque<Task_> tasks_;
 	std::vector<std::unique_ptr<Worker>> workers_;
 };
+
+template<typename T>
+class SharedState {
+public:
+	template<typename R>
+	void set(R&& result) {
+		if (!result_.has_value()) {
+			this->result_ = std::forward<R>(result);
+			ready_.release();
+		}
+	}
+
+	T get() {
+		ready_.acquire();
+		return std::move(result_.value());
+	}
+private:
+	std::optional<T> result_;
+	std::binary_semaphore ready_{ 0 };
+};
+template <typename T>
+class Future;
+
+template<typename T>
+class Promise {
+private:
+	std::shared_ptr<SharedState<T>> ss;
+	bool future_avail = true;
+public:
+	Promise() : ss(std::make_shared<SharedState<T>>()) {}
+
+	template<typename R>
+	void set(R&& result) {
+		ss->set(std::forward<R>(result));
+	}
+
+	Future<T> get_future() {
+		assert(future_avail);
+		future_avail = false;
+		return Future<T>(ss);
+	}
+
+};
+
+template<typename T>
+class Future {
+private:
+	std::shared_ptr<SharedState<T>> ss;
+	bool acquired = false;
+private:
+	Future(std::shared_ptr<SharedState<T>> ss) : ss(ss) {}
+	friend class Promise<T>;
+
+public:
+	T get() {
+		assert(!acquired);
+		acquired = true;
+		return ss->get();
+	}
+};
+

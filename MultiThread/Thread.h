@@ -72,6 +72,7 @@ public:
 	void simpleMultiThreadTaskQueue();
 	void simpleMultiThreadTaskPool();
 	void simpleMultiThreadQueueTaskPool();
+	void simpleFuturePromise();
 };
 
 class Master {

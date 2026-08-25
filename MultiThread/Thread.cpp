@@ -440,3 +440,23 @@ void Thread::simpleMultiThreadQueueTaskPool() {
 
 	tp.waitTP();
 }
+
+void Thread::simpleFuturePromise() {
+	Promise<int> prom;
+	Future<int> future = prom.get_future();
+
+	std::thread([p = std::move(prom)]() mutable {
+		try {
+			std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+			p.set(2);
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Exception in worker thread: " << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cerr << "Unknown exception in worker thread!" << std::endl;
+		}
+	}).detach();
+
+	std::cout << "val: " << future.get() << std::endl;
+}
