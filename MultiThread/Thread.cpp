@@ -394,56 +394,56 @@ void Thread::simpleMultiThreadTaskQueue() {
 }
 
 void Thread::simpleMultiThreadTaskPool() {
-	Task_ t1 = [] {
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		std::ostringstream ss;
-		ss << std::this_thread::get_id();
-		std::cout << std::format("<< {} >>", ss.str());
-	};
+	//Task_ t1 = [] {
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	//	std::ostringstream ss;
+	//	ss << std::this_thread::get_id();
+	//	std::cout << std::format("<< {} >>", ss.str());
+	//};
 
-	TaskPool tp;
-	tp.Run(t1);
-	tp.Run(t1);
-	tp.Run(t1);
-	tp.Run(t1);
-	std::this_thread::sleep_for(std::chrono::milliseconds(600));
-	std::cout << std::endl;
-	tp.Run(t1);
-	tp.Run(t1);
-	tp.Run(t1);
-	tp.Run(t1);
+	//TaskPool tp;
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(600));
+	//std::cout << std::endl;
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//tp.Run(t1);
 
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(160));
+	//std::this_thread::sleep_for(std::chrono::milliseconds(160));
 }
 
 void Thread::simpleMultiThreadQueueTaskPool() {
-	Task_ t1 = [] {
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		std::ostringstream ss;
-		ss << std::this_thread::get_id();
-		std::cout << std::format("<< {} >>\n", ss.str());
-		};
+	//Task_ t1 = [] {
+	//	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	//	std::ostringstream ss;
+	//	ss << std::this_thread::get_id();
+	//	std::cout << std::format("<< {} >>\n", ss.str());
+	//	};
 
-	QueueTaskPool tp(2, 4);
-	tp.Run(t1);
-	tp.Run(t1);
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	tp.Run(t1);
-	tp.Run(t1);
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	tp.Run(t1);
-	tp.Run(t1);
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	tp.Run(t1);
-	tp.Run(t1);
+	//QueueTaskPool tp(2, 4);
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	//tp.Run(t1);
+	//tp.Run(t1);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	//tp.Run(t1);
+	//tp.Run(t1);
 
-	tp.waitTP();
+	//tp.waitTP();
 }
 
 void Thread::simpleFuturePromise() {
 	Promise<int> prom;
-	Future<int> future = prom.get_future();
+	Future<int> future = prom.getFuture();
 
 	std::thread([p = std::move(prom)]() mutable {
 		try {
@@ -459,4 +459,17 @@ void Thread::simpleFuturePromise() {
 	}).detach();
 
 	std::cout << "val: " << future.get() << std::endl;
+
+	Promise<int> prom2;
+	Future<int> future2 = prom2.getFuture();
+
+	auto [task, fut] = Task_::make([](int x) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		return x * 2;
+		}, 3);
+
+	std::thread t{ std::move(task)};
+	std::cout << "val2: " << fut.get() << std::endl;
+
+	t.join();
 }
