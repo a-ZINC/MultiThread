@@ -418,25 +418,29 @@ void Thread::simpleMultiThreadTaskPool() {
 }
 
 void Thread::simpleMultiThreadQueueTaskPool() {
-	//Task_ t1 = [] {
-	//	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-	//	std::ostringstream ss;
-	//	ss << std::this_thread::get_id();
-	//	std::cout << std::format("<< {} >>\n", ss.str());
-	//	};
+	int cnt = 1;
+	auto t1 = [&cnt](int x) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::ostringstream ss;
+		ss << std::this_thread::get_id();
+		int mul = x * cnt;
+		std::cout << std::format("<< {}, mul: {}, cnt: {} >>\n", ss.str(), mul, cnt);
+		return mul;
+		};
 
-	//QueueTaskPool tp(2, 4);
-	//tp.Run(t1);
-	//tp.Run(t1);
+	auto [task, fut] = Task_::make(t1, 3);
+
+	QueueTaskPool tp(2, 4);
+	tp.Run(std::move(task));
+	int a = fut.get();
+	std::cout << "fut.get(): " << a << std::endl;
+	//tp.Run(std::move(task));
+	//int b = fut.get();
+	//std::cout << "fut.get(): " << b << std::endl;
 	//std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	//tp.Run(t1);
-	//tp.Run(t1);
+	//tp.Run(std::move(task));
 	//std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	//tp.Run(t1);
-	//tp.Run(t1);
-	//std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	//tp.Run(t1);
-	//tp.Run(t1);
+	//tp.Run(std::move(task));
 
 	//tp.waitTP();
 }

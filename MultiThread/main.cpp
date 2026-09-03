@@ -46,8 +46,8 @@ int main() {
 
 	//thread.simpleMultiThreadTaskPool();
 
-	//thread.simpleMultiThreadQueueTaskPool();
+	thread.simpleMultiThreadQueueTaskPool();
 	
-	thread.simpleFuturePromise();
+	//thread.simpleFuturePromise();
 	return 0;
 }
