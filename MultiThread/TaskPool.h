@@ -12,25 +12,44 @@
 #include <optional>
 #include <semaphore>
 #include <cassert>
+#include <variant>
+#include <exception>
 
 template <typename T>
 class SharedState {
 public:
 	template <typename R>
 	void set(R&& value) {
-		if (!result.has_value()) {
+		if (std::holds_alternative<std::monostate>(result)) {
 			result = std::forward<R>(value);
 			s.release();
 		}
 	}
 
+	void set_exception(std::exception_ptr e) {
+		if (std::holds_alternative<std::monostate>(result)) {
+			result = e;
+			s.release();
+		}
+	}
 	T get() {
 		s.acquire();
-		return std::move(result.value());
+		if (auto* ptr = std::get_if<std::exception_ptr>(&result)) {
+			std::rethrow_exception(*ptr);
+		}
+		return std::move(std::get<T>(result));
 
 	}
+
+	bool is_ready() {
+		if (s.try_acquire()) {
+			s.release();
+			return true;
+		}
+		return false;
+	}
 private:
-	std::optional<T> result;
+	std::variant<std::monostate, T, std::exception_ptr> result;
 	std::binary_semaphore s{ 0 };
 };
 
@@ -47,11 +66,16 @@ public:
 		ss->set(std::forward<R>(value));
 	}
 
+	void set_exception(std::exception_ptr e) {
+		ss->set_exception(e);
+	}
+
 	Future<T> getFuture() {
 		assert(future_avail && "Future already retrieved");
 		future_avail = false;
 		return Future(ss);
 	}
+
 private:
 	std::shared_ptr<SharedState<T>> ss;
 	bool future_avail = true;
@@ -67,6 +91,10 @@ public:
 		assert(result_avail && "Result already retrieved");
 		result_avail = false;
 		return std::move(ss->get());
+	}
+
+	bool is_ready() {
+		return ss->is_ready();
 	}
 
 private:
@@ -105,7 +133,18 @@ private:
 			f = std::forward<Func>(func),
 			...a = std::forward<Args>(args)
 		]() mutable {
-			p.set(f(a...));
+			try {
+				if constexpr (std::is_void_v<std::invoke_result_t<Func, Args...>>) {
+					std::invoke(f, a...);
+					p.set();
+				}
+				else {
+					p.set(std::invoke(f, a...));
+				}
+			}
+			catch (...) {
+				p.set_exception(std::current_exception());
+			}
 			};
 	}
 
@@ -150,7 +189,7 @@ private:
 			}
 		}
 	public:
-		Worker() : t([this](std::stop_token st) { Run(st); }) {}
+		Worker() : input(nullptr), t([this](std::stop_token st) { Run(st); }) {}
 		bool isBusy() {
 			return busy_.load(std::memory_order_acquire);
 		}

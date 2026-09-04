@@ -420,20 +420,45 @@ void Thread::simpleMultiThreadTaskPool() {
 void Thread::simpleMultiThreadQueueTaskPool() {
 	int cnt = 1;
 	auto t1 = [&cnt](int x) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 		std::ostringstream ss;
 		ss << std::this_thread::get_id();
 		int mul = x * cnt;
-		std::cout << std::format("<< {}, mul: {}, cnt: {} >>\n", ss.str(), mul, cnt);
+		if (x == 3) {
+			throw std::runtime_error("Error in task 3");
+		}
 		return mul;
 		};
 
-	auto [task, fut] = Task_::make(t1, 3);
-
 	QueueTaskPool tp(2, 4);
-	tp.Run(std::move(task));
-	int a = fut.get();
-	std::cout << "fut.get(): " << a << std::endl;
+	std::vector<Future<int>> futures;
+	futures.reserve(4);
+	for (int i = 0; i < 4; i++) {
+		auto [task, fut] = Task_::make(t1, i);
+		futures.push_back(std::move(fut));
+		tp.Run(std::move(task));
+	}
+
+	auto asyncTask = []() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		std::ostringstream ss;
+		ss << std::this_thread::get_id();
+		std::cout << std::format("Async task running in thread: {}", ss.str()) << std::endl;
+		};
+
+	while (std::ranges::all_of(futures.begin(), futures.end(), [](auto f) {
+		return !f.is_ready();
+		})) {
+		asyncTask();
+	}
+	for (Future f : futures) {
+		try {
+			std::cout << "fut.get(): " << f.get() << std::endl;
+		}
+		catch (...) {
+			std::cerr << "Exception caught in main thread!" << std::endl;
+		}
+	}
 	//tp.Run(std::move(task));
 	//int b = fut.get();
 	//std::cout << "fut.get(): " << b << std::endl;
